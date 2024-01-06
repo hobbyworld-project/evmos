@@ -8,7 +8,7 @@ import (
 	"github.com/evmos/evmos/v15/utils"
 	"github.com/evmos/evmos/v15/x/erc20/keeper"
 
-	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
+	govtypes "github.com/evmos/evmos/v15/x/gov/types"
 
 	"github.com/ethereum/go-ethereum/common"
 

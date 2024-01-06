@@ -183,3 +183,10 @@ func TestEvmosCoinDenom(t *testing.T) {
 		})
 	}
 }
+
+func TestGetAccAddressFromHex(t *testing.T) {
+	strEthereumAddr := "0x4405FD14E9420E7C2F8E85D1B5FC205B6ECCF700"
+	acc, err := GetAccAddressFromHex(strEthereumAddr)
+	require.NoError(t, err, "GetAccAddressFromHex")
+	fmt.Printf("ethereum %s => %s\n", strEthereumAddr, acc.String())
+}

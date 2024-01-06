@@ -83,3 +83,8 @@ dependency-graph.png
 
 # OpenZeppelin contracts
 contracts/@openzeppelin/*
+/package-lock.json
+/go.work
+/go.work.sum
+/cmd/evmosd/evmosd
+/go.work.sum

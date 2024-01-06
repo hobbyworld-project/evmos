@@ -16,8 +16,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/version"
 	sdkvesting "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
-	"github.com/cosmos/cosmos-sdk/x/gov/client/cli"
-	govv1beta1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
+	"github.com/evmos/evmos/v15/x/gov/client/cli"
+	govv1beta1 "github.com/evmos/evmos/v15/x/gov/types/v1beta1"
 
 	"github.com/evmos/evmos/v15/x/vesting/types"
 )

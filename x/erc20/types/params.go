@@ -26,8 +26,8 @@ func NewParams(
 
 func DefaultParams() Params {
 	return Params{
-		EnableErc20:   true,
-		EnableEVMHook: true,
+		EnableErc20:   false,
+		EnableEVMHook: false,
 	}
 }
 

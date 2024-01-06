@@ -223,7 +223,7 @@ endif
 
 ifeq (, $(shell which go-bindata))
 	@echo "Installing go-bindata..."
-	@go install github.com/kevinburke/go-bindata/go-bindata@latest
+	@go install github.com/kevinburke/go-bindata/v4/go-bindata@latest
 else
 	@echo "go-bindata already installed; skipping..."
 endif
@@ -272,7 +272,6 @@ tools-clean:
 go.sum: go.mod
 	echo "Ensure dependencies have not been modified ..." >&2
 	go mod verify
-	go mod tidy
 
 vulncheck: $(BUILDDIR)/
 	GOBIN=$(BUILDDIR) go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -394,7 +393,8 @@ format:
 ###                                Protobuf                                 ###
 ###############################################################################
 
-protoVer=0.11.6
+# legacy version 0.11.6
+protoVer=0.13.0
 protoImageName=ghcr.io/cosmos/proto-builder:$(protoVer)
 protoImage=$(DOCKER) run --rm -v $(CURDIR):/workspace --workdir /workspace --user 0 $(protoImageName)
 
@@ -562,7 +562,7 @@ release:
 
 CONTRACTS_DIR := contracts
 COMPILED_DIR := contracts/compiled_contracts
-TMP := tmp
+TMP := /tmp/evmos-files
 TMP_CONTRACTS := $(TMP).contracts
 TMP_COMPILED := $(TMP)/compiled.json
 TMP_JSON := $(TMP)/tmp.json
@@ -574,12 +574,7 @@ contracts-compile: contracts-clean openzeppelin create-contracts-json
 # Install openzeppelin solidity contracts
 openzeppelin:
 	@echo "Importing openzeppelin contracts..."
-	@cd $(CONTRACTS_DIR)
-	@npm install
-	@cd ../../../../
-	@mv node_modules $(TMP)
-	@mv package-lock.json $(TMP)
-	@mv $(TMP)/@openzeppelin $(CONTRACTS_DIR)
+	@cd $(CONTRACTS_DIR) && npm install && mv node_modules/@openzeppelin . && rm -rf node_modules
 
 # Clean tmp files
 contracts-clean:
@@ -601,7 +596,7 @@ create-contracts-json:
 		mkdir -p $(COMPILED_DIR) ;\
 		mkdir -p $(TMP) ;\
 		echo "\nCompiling solidity contract $${c}..." ;\
-		solc --combined-json abi,bin $(CONTRACTS_DIR)/$${c}.sol > $(TMP_COMPILED) ;\
+		solc --base-path ./ --include-path ./contracts --combined-json abi,bin $(CONTRACTS_DIR)/$${c}.sol > $(TMP_COMPILED) ;\
 		echo "Formatting JSON..." ;\
 		get_contract=$$(jq '.contracts["$(CONTRACTS_DIR)/'$$c'.sol:'$$c'"]' $(TMP_COMPILED)) ;\
 		add_contract_name=$$(echo $$get_contract | jq '. + { "contractName": "'$$c'" }') ;\

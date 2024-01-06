@@ -4,6 +4,8 @@
 package utils
 
 import (
+	"encoding/hex"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"strings"
 
 	"github.com/evmos/evmos/v15/crypto/ethsecp256k1"
@@ -18,11 +20,11 @@ import (
 
 const (
 	// MainnetChainID defines the Evmos EIP155 chain ID for mainnet
-	MainnetChainID = "evmos_9001"
+	MainnetChainID = "hobby_9001"
 	// TestnetChainID defines the Evmos EIP155 chain ID for testnet
-	TestnetChainID = "evmos_9000"
+	TestnetChainID = "hobby_9000"
 	// BaseDenom defines the Evmos mainnet denomination
-	BaseDenom = "aevmos"
+	BaseDenom = "usby"
 )
 
 // IsMainnet returns true if the chain-id has the Evmos mainnet EIP155 chain prefix.
@@ -84,4 +86,23 @@ func GetEvmosAddressFromBech32(address string) (sdk.AccAddress, error) {
 	}
 
 	return sdk.AccAddress(addressBz), nil
+}
+
+// GetAccAddressFromHex returns the  sdk.Account address from ethereum address
+func GetAccAddressFromHex(hexAddr string) (accAddr sdk.AccAddress, err error) {
+	cfg := sdk.GetConfig()
+	if strings.HasPrefix(hexAddr, "0x") {
+		hexAddr = strings.TrimPrefix(hexAddr, "0x")
+	}
+	var bs []byte
+	bs, err = hex.DecodeString(hexAddr)
+	if err != nil {
+		return
+	}
+	var bech32Addr string
+	bech32Addr, err = bech32.ConvertAndEncode(cfg.GetBech32AccountAddrPrefix(), bs)
+	if err != nil {
+		return
+	}
+	return sdk.AccAddressFromBech32(bech32Addr)
 }

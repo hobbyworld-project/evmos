@@ -30,7 +30,7 @@ import (
 
 var (
 	txEvents  = tmtypes.QueryForEvent(tmtypes.EventTx).String()
-	evmEvents = tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s.%s='%s'",
+	GovEvents = tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s.%s='%s'",
 		tmtypes.EventTypeKey,
 		tmtypes.EventTx,
 		sdk.EventTypeMessage,
@@ -183,7 +183,7 @@ func (es *EventSystem) subscribeLogs(crit filters.FilterCriteria) (*Subscription
 	sub := &Subscription{
 		id:        rpc.NewID(),
 		typ:       filters.LogsSubscription,
-		event:     evmEvents,
+		event:     GovEvents,
 		logsCrit:  crit,
 		created:   time.Now().UTC(),
 		logs:      make(chan []*ethtypes.Log),

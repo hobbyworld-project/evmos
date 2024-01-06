@@ -15,7 +15,7 @@ import (
 
 	abci "github.com/cometbft/cometbft/abci/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	govv1beta1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
+	govv1beta1 "github.com/evmos/evmos/v15/x/gov/types/v1beta1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 
 	"github.com/evmos/evmos/v15/crypto/ethsecp256k1"

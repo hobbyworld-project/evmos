@@ -8,8 +8,8 @@ import (
 	fmt "fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	govcdc "github.com/cosmos/cosmos-sdk/x/gov/codec"
-	govv1beta1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
+	govcdc "github.com/evmos/evmos/v15/x/gov/codec"
+	govv1beta1 "github.com/evmos/evmos/v15/x/gov/types/v1beta1"
 	evmostypes "github.com/evmos/evmos/v15/types"
 )
 

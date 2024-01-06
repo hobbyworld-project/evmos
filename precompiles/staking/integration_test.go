@@ -15,7 +15,6 @@ import (
 	"cosmossdk.io/math"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/query"
-	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -29,6 +28,7 @@ import (
 	"github.com/evmos/evmos/v15/precompiles/testutil/contracts"
 	evmosutil "github.com/evmos/evmos/v15/testutil"
 	testutiltx "github.com/evmos/evmos/v15/testutil/tx"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
 // General variables used for integration tests
