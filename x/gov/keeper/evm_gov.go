@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"cosmossdk.io/math"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -231,6 +232,11 @@ func (k Keeper) SettleVoterReward(ctx sdk.Context, validators []abci.Validator) 
 		validator := k.stakingKeeper.ValidatorByConsAddr(ctx, v.Address)
 		candidate, ok := k.GetCandidate(ctx, validator.GetOperator())
 		if !ok {
+			//genesis validator just burn the rewards
+			err = k.bankKeeper.BurnCoins(ctx, types.ModuleName, valCoins)
+			if err != nil {
+				panic(err)
+			}
 			continue
 		}
 		if candidate.ActiveHeight == 0 {
@@ -310,11 +316,18 @@ func (k Keeper) SettleNftVesting(ctx sdk.Context) {
 	quota := erc721.MintQuota
 	logger := ctx.Logger()
 	start := time.Now()
-	// TODO: Consider parallelizing later
+
 	logger.Info("[SettleNftVesting] genesis NFT cards", "count", len(cards))
 	for _, card := range cards {
-		claimableAmt := card.ClaimableAmount
-		if blockHeight-card.LastSettleHeight >= erc721.SettleIntervalEpochs {
+		var claimableAmt math.LegacyDec
+		needSettle := blockHeight-card.LastSettleHeight >= erc721.SettleIntervalEpochs
+		needClean := blockHeight > (card.ActiveHeight + card.VestingEpochs)
+		claimableAmt = card.ClaimableAmount.Add(*card.LinearAmount)
+		if needClean {
+			claimableAmt = card.ClaimableAmount.Add(math.LegacyZeroDec())
+		}
+
+		if needSettle || needClean {
 			//mint and send linear amount to card-holder on settle epoch
 			coin := sdk.NewCoin(denom, claimableAmt.TruncateInt())
 			if coin.Amount.GT(quota.TruncateInt()) {
@@ -339,7 +352,7 @@ func (k Keeper) SettleNftVesting(ctx sdk.Context) {
 			}
 
 			zeroDec := sdk.ZeroDec()
-			released := card.ReleasedAmount.Add(*claimableAmt)
+			released := card.ReleasedAmount.Add(claimableAmt)
 			card.LastSettleHeight = blockHeight
 			card.ReleasedAmount = &released
 			card.ClaimableAmount = &zeroDec
@@ -350,16 +363,15 @@ func (k Keeper) SettleNftVesting(ctx sdk.Context) {
 				logger.Error("[SettleNftVesting] update released amount to evm contract failed", "error", err.Error())
 				return
 			}
-			logger.Info("[SettleNftVesting] settle claimable coins", "token-id", card.TokenId, "released", released, "claimable-coins", claimableAmt)
+			logger.Info("[SettleNftVesting] settle claimable coins", "token-id", card.TokenId, "token-type", card.TokenType, "released", released, "claimable-coins", claimableAmt)
 		} else {
-			//add linear amount into claimable amount
-			claimable := card.ClaimableAmount.Add(*card.LinearAmount)
-			card.ClaimableAmount = &claimable
+			card.ClaimableAmount = &claimableAmt
 		}
+
 		k.SetGenesisNft(ctx, card)
-		if blockHeight > (card.ActiveHeight + card.VestingEpochs) {
+		if needClean {
 			k.DeleteGenesisNft(ctx, card.TokenId) // all vesting tokens were released, remove it
-			logger.Info("[SettleNftVesting] delete genesis NFT", "owner", card.Owner, "address", card.Address, "token-id", card.TokenId)
+			logger.Info("[SettleNftVesting] delete genesis NFT", "owner", card.Owner, "address", card.Address, "token-id", card.TokenId, "token-type", card.TokenType, "released", card.ReleasedAmount)
 		}
 	}
 	end := time.Now()
@@ -612,7 +624,7 @@ func (keeper Keeper) handleSetValidatorStatus(ctx sdk.Context, msg *stakingtypes
 	valAddr, err := sdk.ValAddressFromBech32(msg.ValidatorAddress)
 	strHex := hex.EncodeToString(valAddr.Bytes())
 	callAddr := common.HexToAddress(strHex)
-	_, err = keeper.ContractCall(ctx, types.ContractMethodSetValidatorStatus, callAddr, status)
+	_, err = keeper.ContractCall(ctx, types.ContractMethodSetValidatorStatus, callAddr, uint8(status.Int64()))
 	if err != nil {
 		return fmt.Errorf("call evm method %s validator %s (%s) error %s", types.ContractMethodSetValidatorStatus, msg.ValidatorAddress, callAddr.String(), err.Error())
 	}

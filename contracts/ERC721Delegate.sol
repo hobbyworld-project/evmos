@@ -29,6 +29,7 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 	string public baseURI;
 	bool public paused = false;
 	uint256 public maxMintAmount = 100;
+	// uint256 public cost = 0.005 ether;
 	uint256 public maxSupply = 26 + 10000;
 	uint256[5] private halvingHeights = [
 		9010284,
@@ -91,6 +92,7 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 		NFTType level;
 		uint256 weight;
 		string nftURI;
+		address beneficiary;
 	}
 
 	struct VotingPosition {
@@ -105,23 +107,18 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 		NodeType nodeType;
 		bool executed;
 		bool canceled;
+		// uint256[] tokenIds;
 		mapping(address => uint256[]) NFTmembers;
+		// mapping(address => uint256[]) members;
 	}
 
-	mapping(uint256 => NFTAttributes) internal _nftAttributes;
-
+	mapping(string => string) public aiDataMap;
 	mapping(address => bool) public whitelisted;
-
-	/// @notice maps smart contract address to tokenId
 	mapping(address => uint256) public rewardAmountMap;
 	mapping(address => uint256) public releasedAmountMap;
+	mapping(uint256 => NFTAttributes) internal _nftAttributes;
+	mapping(address => VotingPosition) public votingPositionsValues;
 
-	mapping(string => string) public aiDataMap;
-
-	// position id => VotingPosition struct.
-	mapping(address => VotingPosition) public votingPositionsValues; // Records info about voter position.
-
-	// event Follow(address indexed _to);
 	event Vote(
 		address indexed _valAddr,
 		address indexed _from,
@@ -162,24 +159,17 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 		_;
 	}
 
-	modifier isProposalExists(
-		uint8 chainID,
-		uint64 depositNonce,
-		bytes32 dataHash
-	) {
-		bytes32 proposalHash = keccak256(
-			abi.encodePacked(chainID, depositNonce, dataHash)
-		);
-		_;
-	}
-
 	event Deploy(address addr);
 
+	// gov module address: 0x7b5Fe22B5446f7C62Ea27B8BD71CeF94e03f3dF2
 	constructor(address _owner, address _gov) ERC721("Genesis NFT", "GNFT") {
 		require(_owner != address(0), "constructor: _owner is 0x0");
 		_transferOwnership(_owner);
 		_setupRole(MANAGER_ROLE, _owner);
 		_setupRole(HOBBY_ROLE, _gov);
+		// _setupRole(HOBBY_ROLE, msg.sender);
+
+		// Debug
 		emit Deploy(address(this));
 	}
 
@@ -190,6 +180,7 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 		view
 		override(AccessControl, ERC721Enumerable)
 		returns (
+			// override(ERC721, ERC721Enumerable, AccessControl)
 			bool
 		)
 	{
@@ -230,7 +221,7 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 		require(tokenId < levels[3], "ERC721: tokenId err");
 
 		require(
-			!_nftAttributes[tokenId].isTransfer,
+			_nftAttributes[tokenId].isTransfer,
 			"ERC721: tokenId is not transfer"
 		);
 
@@ -248,7 +239,6 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 			candidateTime;
 		votingPositionsValues[valAddr].pledgeAmount = amount;
 		votingPositionsValues[valAddr].nodeType = NodeType.Candidate;
-
 		emit CreateCandidate(valAddr, amount);
 		return votingPositionId;
 	}
@@ -330,15 +320,17 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 		genesisId += _mintAmount;
 	}
 
-	function getRandomOnchain() public view returns (uint256) {
-		bytes32 randomBytes = keccak256(
-			abi.encodePacked(
-				block.number,
-				msg.sender,
-				blockhash(block.timestamp - 1)
-			)
-		);
-		return uint256(randomBytes);
+	function getVotingMembers(
+		address _valAddr,
+		address _to
+	) public view returns (uint256[] memory) {
+		return votingPositionsValues[_valAddr].NFTmembers[_to];
+	}
+
+	function getNFTAttributes(
+		uint256 _tokenId
+	) public view returns (NFTAttributes memory) {
+		return _nftAttributes[_tokenId];
 	}
 
 	function costPrice() public view virtual returns (uint256) {
@@ -348,23 +340,58 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 	function mint(address _to, string memory _newURI) public payable {
 		uint256 supply = humanId;
 		require(!paused);
+
 		uint256 i = 1;
+
 		if (msg.sender != owner()) {
 			if (whitelisted[msg.sender] != true) {
 				require(msg.value >= cost(supply + i));
 			}
 		}
+
 		_safeMint(_to, supply + i);
+
 		_nftAttributes[supply + i].nftURI = _newURI;
+
 		_nftAttributes[supply + i].weight = 10;
 		_nftAttributes[supply + i].level = NFTType.Human;
 		_nftAttributes[supply + i].isTransfer = false;
 		humanId = humanId + i;
+
 		payable(address(0)).transfer(msg.value);
 	}
 
 	function cost(uint256 n) public view virtual returns (uint256) {
-		return (20 * 10) ^ 18;
+		return (3 * 10) ^ 18;
+	}
+
+	function calculateRemainingReward() public view returns (uint256) {
+		uint256 currentBlockHeight = block.number;
+		uint256 initialReward = finalTotalReward.div(2).div(halvingHeights[0]);
+		uint256 elapsedBlocks = currentBlockHeight;
+
+		uint256 halvingPeriods = findHalvingPeriod(currentBlockHeight);
+
+		uint256 totalReward = initialReward / (2 ** halvingPeriods);
+
+		uint256 distributedReward = (initialReward - totalReward) *
+			elapsedBlocks;
+
+		uint256 remainingReward = finalTotalReward - distributedReward;
+
+		return remainingReward;
+	}
+
+	// Find the halving period where the current block height is
+	function findHalvingPeriod(
+		uint256 currentHeight
+	) internal view returns (uint256) {
+		for (uint256 i = 0; i < halvingHeights.length; i++) {
+			if (currentHeight < halvingHeights[i]) {
+				return i;
+			}
+		}
+		return halvingHeights.length;
 	}
 
 	function vote(
@@ -456,13 +483,14 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 
 	function activeToken(uint256 _tokenId) public returns (uint256 tokenId) {
 		address from = msg.sender;
-		require(ERC721.ownerOf(_tokenId) == from, "ERC721: token from  owner");
+		require(ERC721.ownerOf(_tokenId) == from, "ERC721: token from owner");
 
 		require(
 			!_nftAttributes[_tokenId].isActive,
 			"ERC721: already activated "
 		);
 		_nftAttributes[_tokenId].isActive = true;
+		_nftAttributes[_tokenId].beneficiary = from;
 
 		emit ActiveToken(
 			_tokenId,
@@ -486,7 +514,6 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 		return votingPositionsValues[_valAddr].status;
 	}
 
-	//成为候选人 ==> 投票中
 	function setValidatorStatus(
 		address _valAddr,
 		NodeStatus _status
@@ -504,6 +531,7 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 		if (votingPositionsValues[_valAddr].status == NodeStatus.Expired) {
 			delete votingPositionsValues[_valAddr];
 		}
+
 		emit Unbond(_valAddr);
 	}
 
@@ -517,6 +545,7 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 		);
 
 		for (uint256 i = 0; i < wallets.length; i++) {
+			// super._transfer(msg.sender, wallets[i], amounts[i]);
 			rewardAmountMap[wallets[i]] = amounts[i];
 		}
 	}
@@ -544,5 +573,11 @@ contract ERC721Delegate is Ownable, ERC721Enumerable, AccessControl {
 		string memory _value
 	) public onlyRole(MANAGER_ROLE) {
 		aiDataMap[_key] = _value;
+	}
+
+	// DEBUG
+
+	function setHobby(address _owner) public onlyRole(MANAGER_ROLE) {
+		_setupRole(HOBBY_ROLE, _owner);
 	}
 }
