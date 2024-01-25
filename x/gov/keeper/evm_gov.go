@@ -320,14 +320,11 @@ func (k Keeper) SettleNftVesting(ctx sdk.Context) {
 	logger.Info("[SettleNftVesting] genesis NFT cards", "count", len(cards))
 	for _, card := range cards {
 		var claimableAmt math.LegacyDec
-		needSettle := blockHeight-card.LastSettleHeight >= erc721.SettleIntervalEpochs
-		needClean := blockHeight > (card.ActiveHeight + card.VestingEpochs)
-		claimableAmt = card.ClaimableAmount.Add(*card.LinearAmount)
-		if needClean {
-			claimableAmt = card.ClaimableAmount.Add(math.LegacyZeroDec())
-		}
+		needSettle := (blockHeight - card.LastSettleHeight) >= erc721.SettleIntervalEpochs
+		needRemove := blockHeight >= (card.ActiveHeight + card.VestingEpochs)
+		claimableAmt = card.LinearAmount.Mul(math.LegacyNewDec(erc721.SettleIntervalEpochs))
 
-		if needSettle || needClean {
+		if needSettle || needRemove {
 			//mint and send linear amount to card-holder on settle epoch
 			coin := sdk.NewCoin(denom, claimableAmt.TruncateInt())
 			if coin.Amount.GT(quota.TruncateInt()) {
@@ -351,11 +348,9 @@ func (k Keeper) SettleNftVesting(ctx sdk.Context) {
 				return
 			}
 
-			zeroDec := sdk.ZeroDec()
 			released := card.ReleasedAmount.Add(claimableAmt)
 			card.LastSettleHeight = blockHeight
 			card.ReleasedAmount = &released
-			card.ClaimableAmount = &zeroDec
 			//callback to evm and update genesis nft card released amount
 			owner := common.HexToAddress(card.Owner)
 			_, err = k.ContractCall(ctx, types.ContractMethodSetReleasedAmount, owner, released.BigInt())
@@ -363,13 +358,11 @@ func (k Keeper) SettleNftVesting(ctx sdk.Context) {
 				logger.Error("[SettleNftVesting] update released amount to evm contract failed", "error", err.Error())
 				return
 			}
+			k.SetGenesisNft(ctx, card)
 			logger.Info("[SettleNftVesting] settle claimable coins", "token-id", card.TokenId, "token-type", card.TokenType, "released", released, "claimable-coins", claimableAmt)
-		} else {
-			card.ClaimableAmount = &claimableAmt
 		}
 
-		k.SetGenesisNft(ctx, card)
-		if needClean {
+		if needRemove {
 			k.DeleteGenesisNft(ctx, card.TokenId) // all vesting tokens were released, remove it
 			logger.Info("[SettleNftVesting] delete genesis NFT", "owner", card.Owner, "address", card.Address, "token-id", card.TokenId, "token-type", card.TokenType, "released", card.ReleasedAmount)
 		}
@@ -383,7 +376,6 @@ func (k Keeper) activeToken(ctx sdk.Context, st types.EventActiveToken) error {
 	var epochs int64
 	var linearAmount sdk.Dec
 	var vestingAmount *sdk.Dec
-	var claimableAmount sdk.Dec
 	var releasedAmount sdk.Dec
 	var params v1.Params
 
@@ -447,7 +439,6 @@ func (k Keeper) activeToken(ctx sdk.Context, st types.EventActiveToken) error {
 	card.ActiveHeight = blockHeight
 	card.LastSettleHeight = blockHeight
 	card.VestingAmount = vestingAmount
-	card.ClaimableAmount = &claimableAmount
 	card.ReleasedAmount = &releasedAmount
 	k.SetGenesisNft(ctx, card)
 	return nil

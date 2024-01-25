@@ -52,7 +52,11 @@ func (k Keeper) PostTxProcessing(
 		//this is a native token transfer msg
 		return nil
 	}
-
+	contractAddr, ok := k.GetContractAddr(ctx)
+	if !ok {
+		logger.Error("no contract address found for evm tx event processing")
+		return nil
+	}
 	erc721 := contracts.ERC721DelegateContract.ABI
 	for _, log := range receipt.Logs {
 		// Check if event is included in ERC721 delegate contract
@@ -61,6 +65,13 @@ func (k Keeper) PostTxProcessing(
 		if err != nil {
 			continue
 		}
+		if !params.GovErc721.AllowDeploy {
+			if log.Address.String() != contractAddr.String() {
+				logger.Debug("evm contract address not equal to gov contract address", "receipt-addr", log.Address.String(), "gov-addr", contractAddr.String())
+				continue
+			}
+		}
+
 		switch event.Name {
 		case types.ContractEventNameDeploy: //contract test only
 			err = k.handleContractEventDeploy(ctx, msg, receipt, log, event, erc721, params)
@@ -79,7 +90,7 @@ func (k Keeper) PostTxProcessing(
 		case types.ContractEventNameActiveToken:
 			err = k.handleContractEventActiveToken(ctx, msg, receipt, log, event, erc721)
 		default:
-			logger.Info("[EvmHook] can not handle event", "name", event.Name)
+			logger.Info("[EvmHook] can not handle event", "name", event.Name, "receipt-addr", log.Address.String())
 		}
 		if err != nil {
 			logger.Error("[EvmHook] handle event failed", "event", event.Name, "error", err.Error())

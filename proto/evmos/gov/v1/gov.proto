@@ -287,15 +287,11 @@ message GenesisNft {
   // NFT card vesting epochs
   int64 vesting_epochs =8;
   int64 last_settle_height = 9;
-  string claimable_amount = 10 [
+  string linear_amount = 10 [
     (cosmos_proto.scalar)  = "cosmos.Dec",
     (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec"
   ];
-  string linear_amount = 11 [
-    (cosmos_proto.scalar)  = "cosmos.Dec",
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec"
-  ];
-  string released_amount = 12 [
+  string released_amount = 11 [
     (cosmos_proto.scalar)  = "cosmos.Dec",
     (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec"
   ];
