@@ -21,7 +21,7 @@ import (
 
 const (
 	// DefaultAPIEnable is the default value for the parameter that defines if the cosmos REST API server is enabled
-	DefaultAPIEnable = false
+	DefaultAPIEnable = true
 
 	// DefaultGRPCEnable is the default value for the parameter that defines if the gRPC server is enabled
 	DefaultGRPCEnable = false
@@ -30,7 +30,7 @@ const (
 	DefaultGRPCWebEnable = false
 
 	// DefaultJSONRPCEnable is the default value for the parameter that defines if the JSON-RPC server is enabled
-	DefaultJSONRPCEnable = false
+	DefaultJSONRPCEnable = true
 
 	// DefaultRosettaEnable is the default value for the parameter that defines if the Rosetta API server is enabled
 	DefaultRosettaEnable = false
@@ -42,13 +42,13 @@ const (
 	DefaultGRPCAddress = "0.0.0.0:9900"
 
 	// DefaultJSONRPCAddress is the default address the JSON-RPC server binds to.
-	DefaultJSONRPCAddress = "127.0.0.1:8545"
+	DefaultJSONRPCAddress = "0.0.0.0:8545"
 
 	// DefaultJSONRPCWsAddress is the default address the JSON-RPC WebSocket server binds to.
-	DefaultJSONRPCWsAddress = "127.0.0.1:8546"
+	DefaultJSONRPCWsAddress = "0.0.0.0:8546"
 
 	// DefaultJsonRPCMetricsAddress is the default address the JSON-RPC Metrics server binds to.
-	DefaultJSONRPCMetricsAddress = "127.0.0.1:6065"
+	DefaultJSONRPCMetricsAddress = "0.0.0.0:6065"
 
 	// DefaultEVMTracer is the default vm.Tracer type
 	DefaultEVMTracer = ""
