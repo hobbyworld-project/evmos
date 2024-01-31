@@ -20,13 +20,19 @@ const (
 
 	// RouterKey is the message route for gov
 	RouterKey = ModuleName
+
+	// SwapPoolName is the name of the token swap
+	SwapPoolName = "swap-pool"
 )
 
 // ModuleAddress is the native module address for EVM
 var ModuleAddress common.Address
 
+var SwapPoolAddress sdk.AccAddress
+
 func init() {
 	ModuleAddress = common.BytesToAddress(authtypes.NewModuleAddress(ModuleName).Bytes())
+	SwapPoolAddress = authtypes.NewModuleAddress(SwapPoolName)
 }
 
 // Keys for governance store
@@ -63,11 +69,13 @@ var (
 	// ParamsKey is the key to query all gov params
 	ParamsKey = []byte{0x30}
 
-	GovContractAddrPrefix = []byte{0x40}
-	GenesisNftPrefix      = []byte{0x41}
-	GovContractAddrKey    = []byte{0x42}
-	CandidatePrefix       = []byte{0x43}
-	CandidateVoterPrefix  = []byte{0x44}
+	GovContractAddrPrefix  = []byte{0x40}
+	GenesisNftPrefix       = []byte{0x41}
+	GovContractAddrKey     = []byte{0x42}
+	CandidatePrefix        = []byte{0x43}
+	CandidateVoterPrefix   = []byte{0x44}
+	SwapContractAddrPrefix = []byte{0x45}
+	SwapContractAddrKey    = []byte{0x46}
 )
 
 // GetGenesisNftKey gets a specific token id key

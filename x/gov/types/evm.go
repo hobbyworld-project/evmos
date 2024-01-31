@@ -50,6 +50,8 @@ const (
 	ContractEventNameUnbond          = "Unbond"
 	ContractEventNameActiveToken     = "ActiveToken"
 	ContractEventNameCreateCandidate = "CreateCandidate"
+	ContractEventNameDeposit         = "Deposit"
+	ContractEventNameWithdrawal      = "Withdrawal"
 )
 
 type Voter struct {
@@ -112,4 +114,14 @@ type EventActiveToken struct {
 type EventCreateCandidate struct {
 	ValAddr common.Address
 	Amount  *big.Int
+}
+
+type EventSwapDeposit struct {
+	Dst common.Address
+	Wad *big.Int
+}
+
+type EventSwapWithdraw struct {
+	Src common.Address
+	Wad *big.Int
 }

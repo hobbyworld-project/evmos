@@ -34,13 +34,18 @@ func EndBlocker(ctx sdk.Context, keeper *keeper.Keeper) {
 	if params.GovErc721.EnableEvm {
 		if ctx.BlockHeight() == 1 {
 			// deploy erc721 contract
-			contractAddr, err := keeper.DeployGovContract(ctx) //keeper.DeployERC20Contract(ctx)
+			contractAddr, err := keeper.DeployGovContract(ctx)
 			if err != nil {
 				panic(err.Error())
 			}
-			// save erc721 contract address to kv store
-			keeper.SetContractAddr(ctx, contractAddr)
-			logger.Info("kv store: save erc721 contract successful", "address", contractAddr.String())
+			keeper.SetGovContractAddr(ctx, contractAddr)
+
+			// deploy swap contract
+			contractAddr, err = keeper.DeploySwapContract(ctx)
+			if err != nil {
+				panic(err.Error())
+			}
+			keeper.SetSwapContractAddr(ctx, contractAddr)
 		}
 		keeper.SettleNftVesting(ctx)
 		return // using ERC721 contract to govern

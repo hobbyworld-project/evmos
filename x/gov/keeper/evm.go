@@ -25,8 +25,10 @@ import (
 
 var abi721 = contracts.ERC721DelegateContract.ABI
 var bin721 = contracts.ERC721DelegateContract.Bin
+var abiSwap = contracts.WHBYContract.ABI
+var binSwap = contracts.WHBYContract.Bin
 
-// DeployGovContract creates and deploys an ERC20 contract on the EVM with the module account as owner.
+// DeployGovContract creates and deploys an ERC721 contract on the EVM with the module account as owner.
 func (k Keeper) DeployGovContract(
 	ctx sdk.Context,
 ) (common.Address, error) {
@@ -60,8 +62,38 @@ func (k Keeper) DeployGovContract(
 	return contractAddr, nil
 }
 
+// DeploySwapContract creates and deploys token swap contract on the EVM with the module account as owner.
+func (k Keeper) DeploySwapContract(
+	ctx sdk.Context,
+) (common.Address, error) {
+
+	ctorArgs, err := abiSwap.Pack(
+		"",
+	)
+	if err != nil {
+		return common.Address{}, errorsmod.Wrapf(types.ErrABIPack, "swap contract abi pack error: %s", err.Error())
+	}
+
+	data := make([]byte, len(binSwap)+len(ctorArgs))
+	copy(data[:len(binSwap)], binSwap)
+	copy(data[len(binSwap):], ctorArgs)
+
+	nonce, err := k.authKeeper.GetSequence(ctx, types.ModuleAddress.Bytes())
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	contractAddr := crypto.CreateAddress(types.ModuleAddress, nonce)
+	_, err = k.CallEVMWithData(ctx, types.ModuleAddress, nil, data, true)
+	if err != nil {
+		return common.Address{}, errorsmod.Wrapf(err, "failed to deploy swap contract")
+	}
+	ctx.Logger().Info("swap contract deployed", "contract-address", contractAddr.String(), "gov-module-addr", types.ModuleAddress.String())
+	return contractAddr, nil
+}
+
 func (k Keeper) ContractQuery(ctx sdk.Context, method string, args ...interface{}) (res *evmtypes.MsgEthereumTxResponse, err error) {
-	contractAddr, exist := k.GetContractAddr(ctx)
+	contractAddr, exist := k.GetGovContractAddr(ctx)
 	if !exist {
 		return nil, fmt.Errorf("no gov contract address found")
 	}
@@ -73,7 +105,7 @@ func (k Keeper) ContractQuery(ctx sdk.Context, method string, args ...interface{
 }
 
 func (k Keeper) ContractCall(ctx sdk.Context, method string, args ...interface{}) (res *evmtypes.MsgEthereumTxResponse, err error) {
-	contractAddr, exist := k.GetContractAddr(ctx)
+	contractAddr, exist := k.GetGovContractAddr(ctx)
 	if !exist {
 		return nil, fmt.Errorf("no gov contract address found")
 	}

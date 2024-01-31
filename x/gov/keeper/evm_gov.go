@@ -51,8 +51,8 @@ func (k Keeper) GetAllGenesisNfts(ctx sdk.Context) (cards []v1.GenesisNft) {
 	return
 }
 
-// GetContractAddr get official gov contract address from kv store
-func (k Keeper) GetContractAddr(ctx sdk.Context) (common.Address, bool) {
+// GetGovContractAddr get official gov contract address from kv store
+func (k Keeper) GetGovContractAddr(ctx sdk.Context) (common.Address, bool) {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.GovContractAddrPrefix)
 	bs := store.Get(types.GovContractAddrKey)
 	if len(bs) == 0 {
@@ -61,10 +61,26 @@ func (k Keeper) GetContractAddr(ctx sdk.Context) (common.Address, bool) {
 	return common.BytesToAddress(bs), true
 }
 
-// SetContractAddr set official gov contract address to kv store
-func (k Keeper) SetContractAddr(ctx sdk.Context, addr common.Address) {
+// SetGovContractAddr set official gov contract address to kv store
+func (k Keeper) SetGovContractAddr(ctx sdk.Context, addr common.Address) {
 	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.GovContractAddrPrefix)
 	store.Set(types.GovContractAddrKey, addr.Bytes())
+}
+
+// GetSwapContractAddr get official token swap contract address from kv store
+func (k Keeper) GetSwapContractAddr(ctx sdk.Context) (common.Address, bool) {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.SwapContractAddrPrefix)
+	bs := store.Get(types.SwapContractAddrKey)
+	if len(bs) == 0 {
+		return common.Address{}, false
+	}
+	return common.BytesToAddress(bs), true
+}
+
+// SetSwapContractAddr set official token swap contract address to kv store
+func (k Keeper) SetSwapContractAddr(ctx sdk.Context, addr common.Address) {
+	store := prefix.NewStore(ctx.KVStore(k.storeKey), types.SwapContractAddrPrefix)
+	store.Set(types.SwapContractAddrKey, addr.Bytes())
 }
 
 func (k Keeper) SetCandidate(ctx sdk.Context, candidate types.Candidate) {
@@ -574,10 +590,52 @@ func (k Keeper) voteFinish(ctx sdk.Context, st types.EventVoteFinished) error {
 	return nil
 }
 
+// swapDeposit deposit the staking token to swap contract
+func (k Keeper) swapDeposit(ctx sdk.Context, st types.EventSwapDeposit) error {
+	logger := ctx.Logger()
+	addr := sdk.AccAddress(st.Dst.Bytes())
+	if st.Wad == nil {
+		return fmt.Errorf("swap deposit: from [%s] amount illegal", st.Dst.String())
+	}
+	denom := k.stakingKeeper.BondDenom(ctx)
+	n, ok := sdk.NewIntFromString(st.Wad.String())
+	if !ok {
+		return fmt.Errorf("swap deposit: from [%s] amount illegal", st.Dst.String())
+	}
+	amount := sdk.NewCoin(denom, n)
+	err := k.bankKeeper.SendCoinsFromAccountToModule(ctx, addr, types.SwapPoolName, sdk.NewCoins(amount))
+	if err != nil {
+		return fmt.Errorf("swap deposit: from [%s/%s] to [%s/%s] amount [%v] send error [%s]", st.Dst, addr, types.SwapPoolName, types.SwapPoolAddress, amount, err)
+	}
+	logger.Info("swap deposit", "eth-addr", st.Dst.String(), "hobby-addr", addr.String(), "to", types.SwapPoolAddress.String(), "amount", amount.String(), "end")
+	return nil
+}
+
+// swapWithdraw withdraw the staking token from swap contract
+func (k Keeper) swapWithdraw(ctx sdk.Context, st types.EventSwapWithdraw) error {
+	logger := ctx.Logger()
+	addr := sdk.AccAddress(st.Src.Bytes())
+	if st.Wad == nil {
+		return fmt.Errorf("swap withdraw: from [%s] amount illegal", st.Src.String())
+	}
+	denom := k.stakingKeeper.BondDenom(ctx)
+	n, ok := sdk.NewIntFromString(st.Wad.String())
+	if !ok {
+		return fmt.Errorf("swap withdraw: from [%s] amount illegal", st.Src.String())
+	}
+	amount := sdk.NewCoin(denom, n)
+	err := k.bankKeeper.SendCoinsFromModuleToAccount(ctx, types.SwapPoolName, addr, sdk.NewCoins(amount))
+	if err != nil {
+		return fmt.Errorf("swap withdraw: from [%s/%s] to [%s/%s] amount [%v] send error [%s]", types.SwapPoolName, types.SwapPoolAddress, st.Src, addr, amount, err)
+	}
+	logger.Info("swap withdraw ", "eth-addr", st.Src.String(), "hobby-addr", addr.String(), "from", types.SwapPoolAddress.String(), "amount", amount.String())
+	return nil
+}
+
 // voteFinish vote finished and candidate will become a real validator
 func (k Keeper) deployContract(ctx sdk.Context, st types.EventDeploy, params v1.Params) error {
 	if params.GovErc721.AllowDeploy {
-		k.SetContractAddr(ctx, st.Addr)
+		k.SetGovContractAddr(ctx, st.Addr)
 	}
 	return nil
 }
