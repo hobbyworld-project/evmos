@@ -7,8 +7,8 @@ import (
 	"errors"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	govtypes "github.com/evmos/evmos/v15/x/gov/types"
-	govv1 "github.com/evmos/evmos/v15/x/gov/types/v1"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	vestingtypes "github.com/evmos/evmos/v15/x/vesting/types"
 )
 

@@ -3,7 +3,7 @@ package keeper_test
 import (
 	"fmt"
 
-	govtypes "github.com/evmos/evmos/v15/x/gov/types"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	sdk "github.com/cosmos/cosmos-sdk/types"

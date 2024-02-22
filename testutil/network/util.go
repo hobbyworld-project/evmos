@@ -27,10 +27,10 @@ import (
 	crisistypes "github.com/cosmos/cosmos-sdk/x/crisis/types"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
-	govtypes "github.com/evmos/evmos/v15/x/gov/types"
-	govv1 "github.com/evmos/evmos/v15/x/gov/types/v1"
-	inflationtypes "github.com/evmos/evmos/v15/x/inflation/types"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	inflationtypes "github.com/evmos/evmos/v15/x/inflation/types"
 
 	"github.com/evmos/evmos/v15/server"
 	evmtypes "github.com/evmos/evmos/v15/x/evm/types"

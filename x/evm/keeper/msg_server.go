@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strconv"
 
-	govtypes "github.com/evmos/evmos/v15/x/gov/types"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 
 	tmbytes "github.com/cometbft/cometbft/libs/bytes"
 	tmtypes "github.com/cometbft/cometbft/types"

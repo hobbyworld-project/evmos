@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
-	length "github.com/evmos/evmos/v15/x/gov/types/v1beta1"
+	length "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 
 	utiltx "github.com/evmos/evmos/v15/testutil/tx"
 	"github.com/evmos/evmos/v15/x/erc20/types"

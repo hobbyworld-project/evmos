@@ -26,8 +26,8 @@ import (
 	evmkeeper "github.com/evmos/evmos/v15/x/evm/keeper"
 	evmtypes "github.com/evmos/evmos/v15/x/evm/types"
 	feemarkettypes "github.com/evmos/evmos/v15/x/feemarket/types"
-	govtypes "github.com/evmos/evmos/v15/x/gov/types"
-	govv1 "github.com/evmos/evmos/v15/x/gov/types/v1"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 

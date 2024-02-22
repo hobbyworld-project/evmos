@@ -29,8 +29,8 @@ import (
 	"github.com/evmos/evmos/v15/utils"
 
 	distributiontypes "github.com/cosmos/cosmos-sdk/x/distribution/types"
-	govtypesv1 "github.com/evmos/evmos/v15/x/gov/types/v1"
-	govtypes "github.com/evmos/evmos/v15/x/gov/types/v1beta1"
+	govtypesv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/suite"
 )

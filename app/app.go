@@ -7,6 +7,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	paramscli "github.com/cosmos/cosmos-sdk/x/params/client/cli"
+	upgradecli "github.com/cosmos/cosmos-sdk/x/upgrade/client/cli"
+	ibccli "github.com/cosmos/ibc-go/v7/modules/core/02-client/client/cli"
 	"io"
 	"net/http"
 	"os"
@@ -16,11 +19,11 @@ import (
 	autocliv1 "cosmossdk.io/api/cosmos/autocli/v1"
 	reflectionv1 "cosmossdk.io/api/cosmos/reflection/v1"
 	runtimeservices "github.com/cosmos/cosmos-sdk/runtime/services"
-	"golang.org/x/exp/slices"
-
+	ibcclient "github.com/cosmos/ibc-go/v7/modules/core/02-client"
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
 	"github.com/spf13/cast"
+	"golang.org/x/exp/slices"
 
 	dbm "github.com/cometbft/cometbft-db"
 	abci "github.com/cometbft/cometbft/abci/types"
@@ -75,6 +78,12 @@ import (
 	feegrantmodule "github.com/cosmos/cosmos-sdk/x/feegrant/module"
 	"github.com/cosmos/cosmos-sdk/x/genutil"
 	genutiltypes "github.com/cosmos/cosmos-sdk/x/genutil/types"
+	"github.com/cosmos/cosmos-sdk/x/gov"
+	govclient "github.com/cosmos/cosmos-sdk/x/gov/client"
+	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
+	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
+	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
+	govv1beta1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	"github.com/cosmos/cosmos-sdk/x/params"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
@@ -88,12 +97,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/upgrade"
 	upgradekeeper "github.com/cosmos/cosmos-sdk/x/upgrade/keeper"
 	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
-	"github.com/evmos/evmos/v15/x/gov"
-	govclient "github.com/evmos/evmos/v15/x/gov/client"
-	govkeeper "github.com/evmos/evmos/v15/x/gov/keeper"
-	govtypes "github.com/evmos/evmos/v15/x/gov/types"
-	govv1 "github.com/evmos/evmos/v15/x/gov/types/v1"
-	govv1beta1 "github.com/evmos/evmos/v15/x/gov/types/v1beta1"
 
 	ibctestingtypes "github.com/cosmos/ibc-go/v7/testing/types"
 
@@ -202,6 +205,29 @@ func init() {
 // Name defines the application binary name
 const Name = "evmosd"
 
+func getGovProposalHandlers() []govclient.ProposalHandler {
+	var govProposalHandlers []govclient.ProposalHandler
+	// this line is used by starport scaffolding # stargate/app/govProposalHandlers
+	var ParamsProposalHandler = govclient.NewProposalHandler(paramscli.NewSubmitParamChangeProposalTxCmd)
+	var UpgradeLegacyProposalHandler = govclient.NewProposalHandler(upgradecli.NewCmdSubmitLegacyUpgradeProposal)
+	var UpgradeLegacyCancelProposalHandler = govclient.NewProposalHandler(upgradecli.NewCmdSubmitLegacyCancelUpgradeProposal)
+	var UpdateClientProposalHandler = govclient.NewProposalHandler(ibccli.NewCmdSubmitUpdateClientProposal)
+	var UpgradeProposalHandler = govclient.NewProposalHandler(ibccli.NewCmdSubmitUpgradeProposal)
+	govProposalHandlers = append(govProposalHandlers,
+		ParamsProposalHandler,
+		UpgradeLegacyProposalHandler,
+		UpgradeLegacyCancelProposalHandler,
+		UpdateClientProposalHandler,
+		UpgradeProposalHandler,
+		// this line is used by starport scaffolding # stargate/app/govProposalHandler
+		erc20client.RegisterCoinProposalHandler, erc20client.RegisterERC20ProposalHandler, erc20client.ToggleTokenConversionProposalHandler,
+		incentivesclient.RegisterIncentiveProposalHandler, incentivesclient.CancelIncentiveProposalHandler,
+		vestingclient.RegisterClawbackProposalHandler,
+	)
+
+	return govProposalHandlers
+}
+
 var (
 	// DefaultNodeHome default home directories for the application daemon
 	DefaultNodeHome string
@@ -217,14 +243,7 @@ var (
 		staking.AppModuleBasic{},
 		distr.AppModuleBasic{},
 		gov.NewAppModuleBasic(
-			[]govclient.ProposalHandler{
-				govclient.ParamsProposalHandler, govclient.UpgradeLegacyProposalHandler, govclient.UpgradeLegacyCancelProposalHandler,
-				govclient.UpdateClientProposalHandler, govclient.UpgradeProposalHandler,
-				// Evmos proposal types
-				erc20client.RegisterCoinProposalHandler, erc20client.RegisterERC20ProposalHandler, erc20client.ToggleTokenConversionProposalHandler,
-				incentivesclient.RegisterIncentiveProposalHandler, incentivesclient.CancelIncentiveProposalHandler,
-				vestingclient.RegisterClawbackProposalHandler,
-			},
+			getGovProposalHandlers(),
 		),
 		params.AppModuleBasic{},
 		slashing.AppModuleBasic{},
@@ -476,9 +495,9 @@ func NewEvmos(
 	// register the proposal types
 	govRouter := govv1beta1.NewRouter()
 	govRouter.AddRoute(govtypes.RouterKey, govv1beta1.ProposalHandler).
-		AddRoute(paramproposal.RouterKey, govclient.NewParamChangeProposalHandler(app.ParamsKeeper)).
-		AddRoute(upgradetypes.RouterKey, govclient.NewSoftwareUpgradeProposalHandler(&app.UpgradeKeeper)).
-		AddRoute(ibcclienttypes.RouterKey, govclient.NewClientProposalHandler(app.IBCKeeper.ClientKeeper)).
+		AddRoute(paramproposal.RouterKey, params.NewParamChangeProposalHandler(app.ParamsKeeper)).
+		AddRoute(upgradetypes.RouterKey, upgrade.NewSoftwareUpgradeProposalHandler(&app.UpgradeKeeper)).
+		AddRoute(ibcclienttypes.RouterKey, ibcclient.NewClientProposalHandler(app.IBCKeeper.ClientKeeper)).
 		AddRoute(erc20types.RouterKey, erc20.NewErc20ProposalHandler(&app.Erc20Keeper)).
 		AddRoute(incentivestypes.RouterKey, incentives.NewIncentivesProposalHandler(&app.IncentivesKeeper)).
 		AddRoute(vestingtypes.RouterKey, vesting.NewVestingProposalHandler(&app.VestingKeeper))
@@ -488,7 +507,7 @@ func NewEvmos(
 	}
 	govKeeper := govkeeper.NewKeeper(
 		appCodec, keys[govtypes.StoreKey], app.AccountKeeper, app.BankKeeper, stakingKeeper,
-		app.EvmKeeper, app.MsgServiceRouter(), govConfig, authAddr, authtypes.FeeCollectorName,
+		app.MsgServiceRouter(), govConfig, authAddr,
 	)
 
 	// Set legacy router for backwards compatibility with gov v1beta1
@@ -672,7 +691,7 @@ func NewEvmos(
 		auth.NewAppModule(appCodec, app.AccountKeeper, authsims.RandomGenesisAccounts, app.GetSubspace(authtypes.ModuleName)),
 		bank.NewAppModule(appCodec, app.BankKeeper, app.AccountKeeper, app.GetSubspace(banktypes.ModuleName)),
 		capability.NewAppModule(appCodec, *app.CapabilityKeeper, false),
-		gov.NewAppModule(appCodec, &app.GovKeeper, app.AccountKeeper, app.BankKeeper, app.EvmKeeper, app.GetSubspace(govtypes.ModuleName)),
+		gov.NewAppModule(appCodec, &app.GovKeeper, app.AccountKeeper, app.BankKeeper, app.GetSubspace(govtypes.ModuleName)),
 		slashing.NewAppModule(appCodec, app.SlashingKeeper, app.AccountKeeper, app.BankKeeper, app.StakingKeeper, app.GetSubspace(slashingtypes.ModuleName)),
 		distr.NewAppModule(appCodec, app.DistrKeeper, app.AccountKeeper, app.BankKeeper, app.StakingKeeper, app.GetSubspace(distrtypes.ModuleName)),
 		staking.NewAppModule(appCodec, &app.StakingKeeper, app.AccountKeeper, app.BankKeeper, app.GetSubspace(stakingtypes.ModuleName)),
